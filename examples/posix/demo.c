@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include "../../messagebus.h"
-#include "port.h"
+#include "messagebus_port.h"
 
 messagebus_t bus;
 
@@ -52,14 +52,16 @@ int main(int argc, const char **argv)
     (void) argv;
 
     /* Create the message bus. */
-    condvar_wrapper_t bus_sync = {PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER};
+    messagebus_condvar_wrapper_t bus_sync;
+    messagebus_condvar_wrapper_init(&bus_sync);
     messagebus_init(&bus, &bus_sync, &bus_sync);
 
     /* Creates a topic and publish it on the bus. */
     messagebus_topic_t topic;
     int buffer;
 
-    condvar_wrapper_t wrapper = {PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER};
+    messagebus_condvar_wrapper_t wrapper;
+    messagebus_condvar_wrapper_init(&wrapper);
     messagebus_topic_init(&topic, &wrapper, &wrapper, &buffer, sizeof buffer);
 
 

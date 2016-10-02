@@ -1,12 +1,11 @@
 #include "ch.h"
 #include "hal.h"
 #include "../../../messagebus.h"
+#include "../messagebus_port.h"
 #include <string.h>
 
 
 messagebus_t bus;
-MUTEX_DECL(bus_lock);
-CONDVAR_DECL(bus_condvar);
 
 
 int send_command(int command, void *message)
@@ -82,14 +81,17 @@ int main(void) {
     halInit();
     chSysInit();
     print("==boot==");
-    messagebus_init(&bus, &bus_lock, &bus_condvar);
+
+    static messagebus_condvar_wrapper_t bus_condvar;
+    messagebus_condvar_wrapper_init(&bus_condvar);
+    messagebus_init(&bus, &bus_condvar, &bus_condvar);
 
     messagebus_topic_t button_topic;
-    MUTEX_DECL(button_topic_lock);
-    CONDVAR_DECL(button_topic_condvar);
 
+    static messagebus_condvar_wrapper_t button_topic_condvar;
+    messagebus_condvar_wrapper_init(&button_topic_condvar);
     messagebus_topic_init(&button_topic,
-                          &button_topic_lock, &button_topic_condvar,
+                          &button_topic_condvar, &button_topic_condvar,
                           NULL, 0);
 
     messagebus_advertise_topic(&bus, &button_topic, "/button_pressed");

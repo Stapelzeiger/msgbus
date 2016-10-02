@@ -114,7 +114,7 @@ CSRC = $(STARTUPSRC) \
        $(BOARDSRC) \
        $(TESTSRC) \
        main.c \
-	   ../port.c \
+	   ../messagebus_port.c \
 	   ../../../messagebus.c
 
 

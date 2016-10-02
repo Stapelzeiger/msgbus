@@ -13,7 +13,7 @@ tests:
 
 target.demo:
     - examples/posix/demo.c
-    - examples/posix/port.c
+    - examples/posix/messagebus_port.c
 
 target.arm:
     - examples/chibios/port.c
