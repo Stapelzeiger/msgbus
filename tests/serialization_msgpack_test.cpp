@@ -1,0 +1,174 @@
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <CppUTest/TestHarness.h>
+#include "../serialization_msgpack.h"
+
+extern "C" {
+#include "cmp/cmp.h"
+}
+#include "cmp_mem_access/cmp_mem_access.h"
+
+extern "C" {
+bool messagebus_cmp_ser_type(const void *var,
+                             const messagebus_type_definition_t *type,
+                             cmp_ctx_t *ctx);
+bool messagebus_cmp_ser_struct_entry(const void *var,
+                                     const messagebus_type_entry_t *entry,
+                                     cmp_ctx_t *ctx);
+bool messagebus_cmp_ser_value(const void *var,
+                              const messagebus_type_entry_t *entry,
+                              cmp_ctx_t *ctx);
+}
+
+
+struct simple_s {
+    float x;
+    int32_t y;
+};
+
+messagebus_type_entry_t simple_entries[] = {
+    {
+        .name = "x",
+        .is_base_type = 1,
+        .is_array = 0,
+        .is_dynamic_array = 0,
+        .struct_offset = offsetof(struct simple_s, x),
+        .base_type = MESSAGEBUS_TYPE_FLOAT32,
+    },
+    {
+        .name = "y",
+        .is_base_type = 1,
+        .is_array = 0,
+        .is_dynamic_array = 0,
+        .struct_offset = offsetof(struct simple_s, y),
+        .base_type = MESSAGEBUS_TYPE_INT32,
+    }
+};
+
+messagebus_type_definition_t simple_type = {
+    .nb_elements = 2,
+    .elements = simple_entries,
+};
+
+
+
+TEST_GROUP(MessagePackSerializationTests)
+{
+    cmp_ctx_t ctx;
+    cmp_mem_access_t mem;
+    char buf[1000];
+    void setup(void)
+    {
+        memset(buf, 0, sizeof(buf));
+        cmp_mem_access_init(&ctx, &mem, buf, sizeof(buf));
+    }
+};
+
+
+TEST(MessagePackSerializationTests, SerializeFloatValue)
+{
+    messagebus_type_entry_t entry = {
+        .is_base_type = 1,
+        .is_array = 0,
+        .is_dynamic_array = 0,
+        .base_type = MESSAGEBUS_TYPE_FLOAT32,
+        .struct_offset = 0,
+    };
+    float var = 3.14;
+    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    cmp_mem_access_set_pos(&mem, 0);
+    float var_read;
+    CHECK_TRUE(cmp_read_float(&ctx, &var_read));
+    CHECK_EQUAL(var, var_read);
+}
+
+
+TEST(MessagePackSerializationTests, SerializeInt32Value)
+{
+    messagebus_type_entry_t entry = {
+        .is_base_type = 1,
+        .is_array = 0,
+        .is_dynamic_array = 0,
+        .base_type = MESSAGEBUS_TYPE_INT32,
+        .struct_offset = 0,
+    };
+    int32_t var = 42;
+    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    cmp_mem_access_set_pos(&mem, 0);
+    int32_t var_read;
+    CHECK_TRUE(cmp_read_int(&ctx, &var_read));
+    CHECK_EQUAL(var, var_read);
+}
+
+
+TEST(MessagePackSerializationTests, SerializeCustomTypeValue)
+{
+    messagebus_type_entry_t entry = {
+        .is_base_type = 0,
+        .is_array = 0,
+        .is_dynamic_array = 0,
+        .type = &simple_type,
+        .struct_offset = 0,
+    };
+    struct simple_s var = {.x = 3.14, .y = 42};
+    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    cmp_mem_access_set_pos(&mem, 0);
+    uint32_t nb_elements;
+    CHECK_TRUE(cmp_read_map(&ctx, &nb_elements));
+    CHECK_EQUAL(2, nb_elements);
+}
+
+
+TEST(MessagePackSerializationTests, SerializeStructEntry)
+{
+    messagebus_type_entry_t entry = {
+        .name = "var",
+        .is_base_type = 1,
+        .is_array = 0,
+        .is_dynamic_array = 0,
+        .base_type = MESSAGEBUS_TYPE_INT32,
+        .struct_offset = 0,
+    };
+    int32_t var = 42;
+    CHECK_TRUE(messagebus_cmp_ser_struct_entry(&var, &entry, &ctx));
+    cmp_mem_access_set_pos(&mem, 0);
+    char name_read_buf[10];
+    uint32_t name_read_buf_sz = sizeof(name_read_buf);
+    int32_t var_read;
+    CHECK_TRUE(cmp_read_str(&ctx, name_read_buf, &name_read_buf_sz));
+    CHECK_TRUE(cmp_read_int(&ctx, &var_read));
+    STRCMP_EQUAL(entry.name, name_read_buf);
+    CHECK_EQUAL(var, var_read);
+}
+
+// todo buffer too short tests
+
+
+TEST(MessagePackSerializationTests, SerializeStruct)
+{
+    struct simple_s val = {.x = 3.14, .y = 42};
+    CHECK_TRUE(messagebus_cmp_ser_type(&val, &simple_type, &ctx));
+
+    cmp_mem_access_set_pos(&mem, 0);
+    uint32_t nb_elements;
+    char name_read_buf[10];
+    uint32_t name_read_buf_sz = sizeof(name_read_buf);
+    float var_f_read;
+    int32_t var_i_read;
+    CHECK_TRUE(cmp_read_map(&ctx, &nb_elements));
+
+    CHECK_EQUAL(2, nb_elements);
+    CHECK_TRUE(cmp_read_str(&ctx, name_read_buf, &name_read_buf_sz));
+    CHECK_TRUE(cmp_read_float(&ctx, &var_f_read));
+    STRCMP_EQUAL("x", name_read_buf);
+    CHECK_EQUAL(val.x, var_f_read);
+
+    name_read_buf_sz = sizeof(name_read_buf);
+    CHECK_TRUE(cmp_read_str(&ctx, name_read_buf, &name_read_buf_sz));
+    CHECK_TRUE(cmp_read_int(&ctx, &var_i_read));
+    STRCMP_EQUAL("y", name_read_buf);
+    CHECK_EQUAL(val.y, var_i_read);
+}
+
+
