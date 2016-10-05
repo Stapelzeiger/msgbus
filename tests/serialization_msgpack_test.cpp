@@ -13,6 +13,9 @@ extern "C" {
 bool messagebus_cmp_ser_type(const void *var,
                              const messagebus_type_definition_t *type,
                              cmp_ctx_t *ctx);
+bool messagebus_cmp_ser_type_compact(const void *var,
+                                     const messagebus_type_definition_t *type,
+                                     cmp_ctx_t *ctx);
 bool messagebus_cmp_ser_struct_entry(const void *var,
                                      const messagebus_type_entry_t *entry,
                                      cmp_ctx_t *ctx);
@@ -120,6 +123,80 @@ TEST(MessagePackSerializationTests, SerializeCustomTypeValue)
 }
 
 
+TEST(MessagePackSerializationTests, SerializeStaticArray)
+{
+    messagebus_type_entry_t entry = {
+        .is_base_type = 1,
+        .is_array = 1,
+        .is_dynamic_array = 0,
+        .base_type = MESSAGEBUS_TYPE_INT32,
+        .struct_offset = 0,
+        .array_len = 3,
+        .size = sizeof(int32_t),
+    };
+    int32_t var[3] = {1, 2, 3};
+    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    cmp_mem_access_set_pos(&mem, 0);
+    int32_t var_read;
+    CHECK_TRUE(cmp_read_int(&ctx, &var_read));
+    CHECK_EQUAL(var[0], var_read);
+    CHECK_TRUE(cmp_read_int(&ctx, &var_read));
+    CHECK_EQUAL(var[1], var_read);
+    CHECK_TRUE(cmp_read_int(&ctx, &var_read));
+    CHECK_EQUAL(var[2], var_read);
+}
+
+
+TEST(MessagePackSerializationTests, SerializeDynamicArray)
+{
+    struct dynamic_array_test_s {
+        int32_t list[10];
+        int list_len;
+    };
+    messagebus_type_entry_t entry = {
+        .is_base_type = 1,
+        .is_array = 1,
+        .is_dynamic_array = 1,
+        .base_type = MESSAGEBUS_TYPE_INT32,
+        .struct_offset = offsetof(dynamic_array_test_s, list),
+        .dynamic_array_len_struct_offset = offsetof(dynamic_array_test_s, list_len),
+        .array_len = 10,
+        .size = sizeof(int32_t),
+    };
+    struct dynamic_array_test_s var = {.list = {1, 2, 3}, .list_len = 3};
+    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    cmp_mem_access_set_pos(&mem, 0);
+    int32_t var_read;
+    CHECK_TRUE(cmp_read_int(&ctx, &var_read));
+    CHECK_EQUAL(var.list[0], var_read);
+    CHECK_TRUE(cmp_read_int(&ctx, &var_read));
+    CHECK_EQUAL(var.list[1], var_read);
+    CHECK_TRUE(cmp_read_int(&ctx, &var_read));
+    CHECK_EQUAL(var.list[2], var_read);
+}
+
+
+TEST(MessagePackSerializationTests, SerializeDynamicArrayMaxSizeCheck)
+{
+    struct dynamic_array_test_s {
+        int32_t list[10];
+        int list_len;
+    };
+    messagebus_type_entry_t entry = {
+        .is_base_type = 1,
+        .is_array = 1,
+        .is_dynamic_array = 1,
+        .base_type = MESSAGEBUS_TYPE_INT32,
+        .struct_offset = offsetof(dynamic_array_test_s, list),
+        .dynamic_array_len_struct_offset = offsetof(dynamic_array_test_s, list_len),
+        .array_len = 10,
+        .size = sizeof(int32_t),
+    };
+    struct dynamic_array_test_s var = {.list_len = 11};
+    CHECK_FALSE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+}
+
+
 TEST(MessagePackSerializationTests, SerializeStructEntry)
 {
     messagebus_type_entry_t entry = {
@@ -171,4 +248,21 @@ TEST(MessagePackSerializationTests, SerializeStruct)
     CHECK_EQUAL(val.y, var_i_read);
 }
 
+
+TEST(MessagePackSerializationTests, SerializeStructCompact)
+{
+    struct simple_s val = {.x = 3.14, .y = 42};
+    CHECK_TRUE(messagebus_cmp_ser_type_compact(&val, &simple_type, &ctx));
+
+    cmp_mem_access_set_pos(&mem, 0);
+    uint32_t nb_elements;
+    float var_f_read;
+    int32_t var_i_read;
+    CHECK_TRUE(cmp_read_array(&ctx, &nb_elements));
+    CHECK_EQUAL(2, nb_elements);
+    CHECK_TRUE(cmp_read_float(&ctx, &var_f_read));
+    CHECK_EQUAL(val.x, var_f_read);
+    CHECK_TRUE(cmp_read_int(&ctx, &var_i_read));
+    CHECK_EQUAL(val.y, var_i_read);
+}
 
