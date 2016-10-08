@@ -26,7 +26,7 @@ class TestParser(unittest.TestCase):
             typename='simple',
             docstring=[],
             entries=[
-                TypeDefinitionEntry(
+                TypeDefinition.Entry(
                     type='int32',
                     name='x',
                     docstring='')

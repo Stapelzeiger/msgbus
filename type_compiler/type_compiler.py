@@ -2,16 +2,27 @@ from collections import namedtuple
 
 WhitespaceBlock = namedtuple('WhitespaceBlock', ['nb_lines'])
 CommentBlock = namedtuple('CommentBlock', ['comments'])
-TypeDefinition = namedtuple('TypeDefinition',
-                            ['typename',
-                             'docstring',
-                             'entries']
-                            )
-TypeDefinitionEntry = namedtuple('TypeDefinitionEntry',
-                                 ['type',
-                                  'name',
-                                  'docstring']
-                                 )
+
+
+class TypeDefinition():
+    def __init__(self, typename, entries, docstring=''):
+        self.typename = typename
+        self.entries = entries
+        self.docstring = docstring
+
+    class Entry():
+        def __init__(self, type, name, docstring='', array_sz=None, dynamic_array=False):
+            self.type = type
+            self.name = name
+            self.docstring = docstring
+            self.array_sz = array_sz
+            self.dynamic_array = dynamic_array
+
+        def __eq__(self, other):  # used for unittests
+            return self.__dict__ == other.__dict__
+
+    def __eq__(self, other):  # used for unittests
+        return self.__dict__ == other.__dict__
 
 
 def split_line_in_expression_and_comment(line):
@@ -67,13 +78,13 @@ def parse(numbered_lines):
                 try:
                     line_idx, line = next(numbered_lines)
                 except StopIteration:
-                    yield TypeDefinition(name, comments, entries)
+                    yield TypeDefinition(name, entries, comments)
                     raise StopIteration
                 expr, comment = split_line_in_expression_and_comment(line)
                 if len(expr) == 2 and ':' not in expr[0]:
-                    entries.append(TypeDefinitionEntry(expr[0], expr[1], comment))
+                    entries.append(TypeDefinition.Entry(expr[0], expr[1], comment))
                 else:
-                    yield TypeDefinition(name, comments, entries)
+                    yield TypeDefinition(name, entries, comments)
                     break
         else:
             raise Exception("line {}: unknown expression {}".format(line_idx+1, expr))
