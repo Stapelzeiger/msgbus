@@ -21,8 +21,14 @@ class TypeDefinition():
         def __eq__(self, other):  # used for unittests
             return self.__dict__ == other.__dict__
 
+        def __repr__(self):
+            return str(self.__dict__)
+
     def __eq__(self, other):  # used for unittests
         return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 
 def split_line_in_expression_and_comment(line):

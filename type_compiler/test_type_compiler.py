@@ -22,13 +22,43 @@ class TestParser(unittest.TestCase):
             '    int32 x'
         ]
         t = parse(iter(enumerate(lines)))
-        expect = TypeDefinition(
-            typename='simple',
-            docstring=[],
-            entries=[
-                TypeDefinition.Entry(
-                    type='int32',
-                    name='x',
-                    docstring='')
-            ])
-        self.assertEqual(next(t), expect)
+        expect = [
+            TypeDefinition(
+                typename='simple',
+                docstring=[],
+                entries=[
+                    TypeDefinition.Entry(
+                        type='int32',
+                        name='x',
+                        docstring='')
+                ]
+            )
+        ]
+        self.assertEqual(list(t), expect)
+
+    def test_parse_type_definition(self):
+        lines = [
+            '# multiline',
+            '# comment',
+            '',
+            '# example docstring',
+            'example:',
+            '    int32 x # x docstring',
+            '    float arr[10]',
+            '    string(10) str'
+        ]
+        t = parse(iter(enumerate(lines)))
+        expect = [
+            CommentBlock([' multiline', ' comment']),
+            WhitespaceBlock(1),
+            TypeDefinition(
+                typename='example',
+                docstring='example docstring',
+                entries=[
+                    TypeDefinition.Entry(type='int32', name='x', docstring=' x docstring'),
+                    TypeDefinition.Entry(type='float', name='arr', docstring=None, array_sz=10),
+                    TypeDefinition.Entry(type='string(10)', name='str', docstring=None),
+                ]
+            )
+        ]
+        self.assertEqual(list(t), expect)
