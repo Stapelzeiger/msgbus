@@ -241,16 +241,21 @@ def generate_C_type_definition_entry(typename, entry):
     return out
 
 
-def generate_C_type_definition(typedef):
+def generate_C_type_definition_entries(typedef):
     out = []
     out.append('static const messagebus_entry_t {}_entries[] = {{'.format(typedef.typename))
     for e in typedef.entries:
         out += generate_C_type_definition_entry(typedef.typename, e)
     out.append('};')
-    out.append('')
+    return out
+
+
+def generate_C_type_definition_object(typedef):
+    out = []
     out.append('const messagebus_type_definition_t {}_type = {{'.format(typedef.typename))
-    out.append('    .nb_elements = {}'.format(len(typedef.entries)))
-    out.append('    .elements = {}_entries'.format(typedef.typename))
+    out.append('    .nb_elements = {},'.format(len(typedef.entries)))
+    out.append('    .elements = {}_entries,'.format(typedef.typename))
+    out.append('    .struct_size = sizeof({}_t),'.format(typedef.typename))
     out.append('};')
     return out
 
@@ -263,7 +268,9 @@ def generate_C_source(filename, elements):
     out.append('')
     for e in elements:
         if type(e) is TypeDefinition:
-            out += generate_C_type_definition(e)
+            out += generate_C_type_definition_entries(e)
+            out.append('')
+            out += generate_C_type_definition_object(e)
             out.append('')
 
     return '\n'.join(out)

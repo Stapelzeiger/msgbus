@@ -17,6 +17,7 @@ typedef struct messagebus_type_entry_s messagebus_type_entry_t;
 struct messagebus_type_definition_s {
     uint16_t nb_elements;
     const messagebus_type_entry_t *elements;
+    size_t struct_size;
 };
 
 struct messagebus_type_entry_s {

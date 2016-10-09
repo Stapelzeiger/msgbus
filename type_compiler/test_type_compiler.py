@@ -159,3 +159,15 @@ class TestCCodeGeneration(unittest.TestCase):
             '    },'
         ]
         self.assertEqual(expect, type_defintion)
+
+    def test_C_type_definition_object(self):
+        t = TypeDefinition('test', [None]*3)
+        type_defintion = generate_C_type_definition_object(t)
+        expect = [
+            'const messagebus_type_definition_t test_type = {',
+            '    .nb_elements = 3,',
+            '    .elements = test_entries,',
+            '    .struct_size = sizeof(test_t),',
+            '};'
+        ]
+        self.assertEqual(expect, type_defintion)
