@@ -62,3 +62,28 @@ class TestParser(unittest.TestCase):
             )
         ]
         self.assertEqual(list(t), expect)
+
+
+class TestCCodeGeneration(unittest.TestCase):
+
+    def test_C_struct_entry(self):
+        entry = TypeDefinition.Entry(type='int32', name='foo')
+        self.assertEqual(['    int32_t foo;'], C_struct_entry(entry))
+
+    def test_C_struct_entry_string(self):
+        entry = TypeDefinition.Entry(type=('string', 10), name='foo')
+        self.assertEqual(['    char foo[11];'], C_struct_entry(entry))
+
+    def test_C_struct_entry_array(self):
+        entry = TypeDefinition.Entry(type='int32', name='foo', array_sz=10)
+        self.assertEqual(['    int32_t foo[10];'], C_struct_entry(entry))
+
+    def test_C_struct_entry_dynamic_array(self):
+        entry = TypeDefinition.Entry(type='int32', name='foo', array_sz=10, dynamic_array=True)
+        self.assertEqual(['    int32_t foo[10];',
+                          '    uint16_t foo_len;'], C_struct_entry(entry))
+
+    def test_C_struct_entry_dynamic_array_of_strings(self):
+        entry = TypeDefinition.Entry(type=('string', 10), name='args', array_sz=3, dynamic_array=True)
+        self.assertEqual(['    char args[3][11];',
+                          '    uint16_t args_len;'], C_struct_entry(entry))

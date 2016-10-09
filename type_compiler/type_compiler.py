@@ -88,7 +88,11 @@ def parse(numbered_lines):
                     raise StopIteration
                 expr, comment = split_line_in_expression_and_comment(line)
                 if len(expr) == 2 and ':' not in expr[0]:
-                    entries.append(TypeDefinition.Entry(expr[0], expr[1], comment))
+                    etype = expr[0]
+                    if etype.startswith('string('):
+                        etype = ('string', int(etype.strip('string()')))
+                    varname = expr[1]
+                    entries.append(TypeDefinition.Entry(etype, varname, comment))
                 else:
                     yield TypeDefinition(name, entries, comments)
                     break
@@ -116,6 +120,35 @@ def generate_C_comment_block(comments, doxygen=False):
         out[0] += ' */'
     return out
 
+C_types_map = {
+    'int32': 'int32_t',
+    'float32': 'float'
+}
+
+
+def C_struct_entry(entry):
+    ctype_char_array = ''
+    if entry.type in C_types_map:
+        ctype = C_types_map[entry.type]
+    elif type(entry.type) is tuple:
+        ctype = 'char'
+        _string, str_len = entry.type
+        ctype_char_array = '[{}]'.format(str_len+1)
+    else:  # custom type
+        ctype = entry.type + '_t'
+    array = ''
+    if entry.array_sz is not None:
+        array = '[{}]'.format(entry.array_sz)
+    doc = ''
+    if entry.docstring:
+        doc = '  /**<{} */'.format(entry.docstring)
+    else:
+        doc = ''
+    out = ['    {} {}{}{};{}'.format(ctype, entry.name, array, ctype_char_array, doc)]
+    if entry.dynamic_array:
+        out += ['    uint16_t {}_len;'.format(entry.name)]
+    return out
+
 
 def generate_C_struct_definition(typedef):
     out = []
@@ -123,11 +156,7 @@ def generate_C_struct_definition(typedef):
         out += generate_C_comment_block(typedef.docstring, doxygen=True)
     out.append('typedef struct {')
     for e in typedef.entries:
-        if e.docstring:
-            doc = '  /**<{} */'.format(e.docstring)
-        else:
-            doc = ''
-        out.append('    {} {};{}'.format(e.type, e.name, doc))
+        out += C_struct_entry(e)
     out.append('}} {}_t;'.format(typedef.typename))
     return out
 
