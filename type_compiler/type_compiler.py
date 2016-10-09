@@ -92,7 +92,17 @@ def parse(numbered_lines):
                     if etype.startswith('string('):
                         etype = ('string', int(etype.strip('string()')))
                     varname = expr[1]
-                    entries.append(TypeDefinition.Entry(etype, varname, comment))
+                    array_sz = None
+                    dynamic_array = False
+                    if varname.endswith(']'):
+                        varname, arraylen_str = varname.split('[')
+                        array_sz = int(arraylen_str.strip('<=]'))
+                        if arraylen_str.startswith('<'):
+                            dynamic_array = True
+                            if not arraylen_str.startswith('<='):
+                                array_sz -= 1
+
+                    entries.append(TypeDefinition.Entry(etype, varname, comment, array_sz, dynamic_array))
                 else:
                     yield TypeDefinition(name, entries, comments)
                     break

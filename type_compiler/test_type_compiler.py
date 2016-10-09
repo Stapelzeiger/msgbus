@@ -53,11 +53,11 @@ class TestParser(unittest.TestCase):
             WhitespaceBlock(1),
             TypeDefinition(
                 typename='example',
-                docstring='example docstring',
+                docstring=[' example docstring'],
                 entries=[
                     TypeDefinition.Entry(type='int32', name='x', docstring=' x docstring'),
-                    TypeDefinition.Entry(type='float', name='arr', docstring=None, array_sz=10),
-                    TypeDefinition.Entry(type='string(10)', name='str', docstring=None),
+                    TypeDefinition.Entry(type='float', name='arr', array_sz=10),
+                    TypeDefinition.Entry(type=('string', 10), name='str'),
                 ]
             )
         ]
