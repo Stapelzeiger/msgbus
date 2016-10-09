@@ -57,7 +57,7 @@ class TestParser(unittest.TestCase):
                 entries=[
                     TypeDefinition.Entry(type='int32', name='x', docstring=' x docstring'),
                     TypeDefinition.Entry(type='float', name='arr', array_sz=10),
-                    TypeDefinition.Entry(type=('string', 10), name='str'),
+                    TypeDefinition.Entry(type='string', name='str', str_len=10),
                 ]
             )
         ]
@@ -71,7 +71,7 @@ class TestCCodeGeneration(unittest.TestCase):
         self.assertEqual(['    int32_t foo;'], C_struct_entry(entry))
 
     def test_C_struct_entry_string(self):
-        entry = TypeDefinition.Entry(type=('string', 10), name='foo')
+        entry = TypeDefinition.Entry(type='string', str_len=10, name='foo')
         self.assertEqual(['    char foo[11];'], C_struct_entry(entry))
 
     def test_C_struct_entry_array(self):
@@ -84,6 +84,78 @@ class TestCCodeGeneration(unittest.TestCase):
                           '    uint16_t foo_len;'], C_struct_entry(entry))
 
     def test_C_struct_entry_dynamic_array_of_strings(self):
-        entry = TypeDefinition.Entry(type=('string', 10), name='args', array_sz=3, dynamic_array=True)
+        entry = TypeDefinition.Entry(type='string', str_len=10, name='args', array_sz=3, dynamic_array=True)
         self.assertEqual(['    char args[3][11];',
                           '    uint16_t args_len;'], C_struct_entry(entry))
+
+    def test_C_type_definition_custom_type_entry(self):
+        e = TypeDefinition.Entry(type='custom', name='x')
+        type_defintion = generate_C_type_definition_entry('test', e)
+        expect = [
+            '    {',
+            '        .name = "x",',
+            '        .is_base_type = 0,',
+            '        .is_array = 0,',
+            '        .is_dynamic_array = 0,',
+            '        .array_len = 0,',
+            '        .dynamic_array_len_struct_offset = 0,',
+            '        .struct_offset = offestof(test_t, x),',
+            '        .type = &custom_type,',
+            '        .size = sizeof(custom_t),',
+            '    },'
+        ]
+        self.assertEqual(expect, type_defintion)
+
+    def test_C_type_definition_string_type_entry(self):
+        e = TypeDefinition.Entry(type='string', str_len=10, name='str')
+        type_defintion = generate_C_type_definition_entry('test', e)
+        expect = [
+            '    {',
+            '        .name = "str",',
+            '        .is_base_type = 1,',
+            '        .is_array = 0,',
+            '        .is_dynamic_array = 0,',
+            '        .array_len = 0,',
+            '        .dynamic_array_len_struct_offset = 0,',
+            '        .struct_offset = offestof(test_t, str),',
+            '        .base_type = MESSAGEBUS_TYPE_STRING,',
+            '        .size = sizeof(char[11]),',
+            '    },'
+        ]
+        self.assertEqual(expect, type_defintion)
+
+    def test_C_type_definition_array_entry(self):
+        e = TypeDefinition.Entry(type='int32', array_sz=100, name='x')
+        type_defintion = generate_C_type_definition_entry('test', e)
+        expect = [
+            '    {',
+            '        .name = "x",',
+            '        .is_base_type = 1,',
+            '        .is_array = 1,',
+            '        .is_dynamic_array = 0,',
+            '        .array_len = 100,',
+            '        .dynamic_array_len_struct_offset = 0,',
+            '        .struct_offset = offestof(test_t, x),',
+            '        .base_type = MESSAGEBUS_TYPE_INT32,',
+            '        .size = sizeof(int32_t),',
+            '    },'
+        ]
+        self.assertEqual(expect, type_defintion)
+
+    def test_C_type_definition_dyn_array_entry(self):
+        e = TypeDefinition.Entry(type='int32', array_sz=100, dynamic_array=True, name='x')
+        type_defintion = generate_C_type_definition_entry('test', e)
+        expect = [
+            '    {',
+            '        .name = "x",',
+            '        .is_base_type = 1,',
+            '        .is_array = 0,',
+            '        .is_dynamic_array = 1,',
+            '        .array_len = 100,',
+            '        .dynamic_array_len_struct_offset = offsetof(test_t, x_len),',
+            '        .struct_offset = offestof(test_t, x),',
+            '        .base_type = MESSAGEBUS_TYPE_INT32,',
+            '        .size = sizeof(int32_t),',
+            '    },'
+        ]
+        self.assertEqual(expect, type_defintion)

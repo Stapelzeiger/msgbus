@@ -11,12 +11,13 @@ class TypeDefinition():
         self.docstring = docstring
 
     class Entry():
-        def __init__(self, type, name, docstring='', array_sz=None, dynamic_array=False):
+        def __init__(self, type, name, docstring='', array_sz=None, dynamic_array=False, str_len=0):
             self.type = type
             self.name = name
             self.docstring = docstring
             self.array_sz = array_sz
             self.dynamic_array = dynamic_array
+            self.str_len = str_len
 
         def __eq__(self, other):  # used for unittests
             return self.__dict__ == other.__dict__
@@ -89,8 +90,10 @@ def parse(numbered_lines):
                 expr, comment = split_line_in_expression_and_comment(line)
                 if len(expr) == 2 and ':' not in expr[0]:
                     etype = expr[0]
+                    str_len = 0
                     if etype.startswith('string('):
-                        etype = ('string', int(etype.strip('string()')))
+                        str_len = int(etype.strip('string()'))
+                        etype = 'string'
                     varname = expr[1]
                     array_sz = None
                     dynamic_array = False
@@ -102,7 +105,7 @@ def parse(numbered_lines):
                             if not arraylen_str.startswith('<='):
                                 array_sz -= 1
 
-                    entries.append(TypeDefinition.Entry(etype, varname, comment, array_sz, dynamic_array))
+                    entries.append(TypeDefinition.Entry(etype, varname, comment, array_sz, dynamic_array, str_len))
                 else:
                     yield TypeDefinition(name, entries, comments)
                     break
@@ -135,15 +138,20 @@ C_types_map = {
     'float32': 'float'
 }
 
+base_types_map = {
+    'int32': 'MESSAGEBUS_TYPE_INT32',
+    'float32': 'MESSAGEBUS_TYPE_FLOAT32',
+    'string': 'MESSAGEBUS_TYPE_STRING'
+}
+
 
 def C_struct_entry(entry):
     ctype_char_array = ''
     if entry.type in C_types_map:
         ctype = C_types_map[entry.type]
-    elif type(entry.type) is tuple:
+    elif entry.type == 'string':
         ctype = 'char'
-        _string, str_len = entry.type
-        ctype_char_array = '[{}]'.format(str_len+1)
+        ctype_char_array = '[{}]'.format(entry.str_len+1)
     else:  # custom type
         ctype = entry.type + '_t'
     array = ''
@@ -204,21 +212,40 @@ def generate_C_header(filename, elements):
     return '\n'.join(out)
 
 
+def generate_C_type_definition_entry(typename, entry):
+    out = []
+    out.append('    {')
+    out.append('        .name = "{}",'.format(entry.name))
+    out.append('        .is_base_type = {},'.format(int(entry.type in base_types_map)))
+    out.append('        .is_array = {},'.format(int(entry.array_sz is not None and not entry.dynamic_array)))
+    out.append('        .is_dynamic_array = {},'.format(int(entry.dynamic_array)))
+    if entry.array_sz:
+        out.append('        .array_len = {},'.format(entry.array_sz))
+    else:
+        out.append('        .array_len = 0,')
+    if entry.dynamic_array:
+        out.append('        .dynamic_array_len_struct_offset = offsetof({}_t, {}_len),'.format(typename, entry.name))
+    else:
+        out.append('        .dynamic_array_len_struct_offset = 0,')
+    out.append('        .struct_offset = offestof({}_t, {}),'.format(typename, entry.name))
+    if entry.type in base_types_map:
+        out.append('        .base_type = {},'.format(base_types_map[entry.type]))
+        if entry.type is 'string':
+            out.append('        .size = sizeof(char[{}]),'.format(entry.str_len+1))
+        else:
+            out.append('        .size = sizeof({}),'.format(C_types_map[entry.type]))
+    else:
+        out.append('        .type = &{}_type,'.format(entry.type))
+        out.append('        .size = sizeof({}_t),'.format(entry.type))
+    out.append('    },')
+    return out
+
+
 def generate_C_type_definition(typedef):
     out = []
     out.append('static const messagebus_entry_t {}_entries[] = {{'.format(typedef.typename))
     for e in typedef.entries:
-        out.append('    {')
-        out.append('        .name = "{}",'.format(e.name))
-        out.append('        .is_base_type = 1,')
-        out.append('        .is_array = 0,')
-        out.append('        .is_dynamic_array = 0,')
-        out.append('        .array_len = 0,')
-        out.append('        .dynamic_array_len_struct_offset = 0,')
-        out.append('        .struct_offset = offestof({}_t, {}),'.format(typedef.typename, e.name))
-        out.append('        .base_type = {},'.format(e.type))
-        out.append('        .size = sizeof({}),'.format(e.type))
-        out.append('    },')
+        out += generate_C_type_definition_entry(typedef.typename, e)
     out.append('};')
     out.append('')
     out.append('const messagebus_type_definition_t {}_type = {{'.format(typedef.typename))
