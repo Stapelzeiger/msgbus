@@ -1,0 +1,5 @@
+
+# Example type
+example:
+    string(50) name # sender name (max 50 characters)
+    int32 data
