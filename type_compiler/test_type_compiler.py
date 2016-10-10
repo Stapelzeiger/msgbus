@@ -99,7 +99,7 @@ class TestCCodeGeneration(unittest.TestCase):
             '        .is_dynamic_array = 0,',
             '        .array_len = 0,',
             '        .dynamic_array_len_struct_offset = 0,',
-            '        .struct_offset = offestof(test_t, x),',
+            '        .struct_offset = offsetof(test_t, x),',
             '        .type = &custom_type,',
             '        .size = sizeof(custom_t),',
             '    },'
@@ -117,7 +117,7 @@ class TestCCodeGeneration(unittest.TestCase):
             '        .is_dynamic_array = 0,',
             '        .array_len = 0,',
             '        .dynamic_array_len_struct_offset = 0,',
-            '        .struct_offset = offestof(test_t, str),',
+            '        .struct_offset = offsetof(test_t, str),',
             '        .base_type = MESSAGEBUS_TYPE_STRING,',
             '        .size = sizeof(char[11]),',
             '    },'
@@ -135,7 +135,7 @@ class TestCCodeGeneration(unittest.TestCase):
             '        .is_dynamic_array = 0,',
             '        .array_len = 100,',
             '        .dynamic_array_len_struct_offset = 0,',
-            '        .struct_offset = offestof(test_t, x),',
+            '        .struct_offset = offsetof(test_t, x),',
             '        .base_type = MESSAGEBUS_TYPE_INT32,',
             '        .size = sizeof(int32_t),',
             '    },'
@@ -153,7 +153,7 @@ class TestCCodeGeneration(unittest.TestCase):
             '        .is_dynamic_array = 1,',
             '        .array_len = 100,',
             '        .dynamic_array_len_struct_offset = offsetof(test_t, x_len),',
-            '        .struct_offset = offestof(test_t, x),',
+            '        .struct_offset = offsetof(test_t, x),',
             '        .base_type = MESSAGEBUS_TYPE_INT32,',
             '        .size = sizeof(int32_t),',
             '    },'

@@ -227,7 +227,7 @@ def generate_C_type_definition_entry(typename, entry):
         out.append('        .dynamic_array_len_struct_offset = offsetof({}_t, {}_len),'.format(typename, entry.name))
     else:
         out.append('        .dynamic_array_len_struct_offset = 0,')
-    out.append('        .struct_offset = offestof({}_t, {}),'.format(typename, entry.name))
+    out.append('        .struct_offset = offsetof({}_t, {}),'.format(typename, entry.name))
     if entry.type in base_types_map:
         out.append('        .base_type = {},'.format(base_types_map[entry.type]))
         if entry.type is 'string':
@@ -243,7 +243,7 @@ def generate_C_type_definition_entry(typename, entry):
 
 def generate_C_type_definition_entries(typedef):
     out = []
-    out.append('static const messagebus_entry_t {}_entries[] = {{'.format(typedef.typename))
+    out.append('static const messagebus_type_entry_t {}_entries[] = {{'.format(typedef.typename))
     for e in typedef.entries:
         out += generate_C_type_definition_entry(typedef.typename, e)
     out.append('};')
