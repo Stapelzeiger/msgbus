@@ -1,4 +1,6 @@
 from collections import namedtuple
+from os.path import splitext
+import argparse
 
 WhitespaceBlock = namedtuple('WhitespaceBlock', ['nb_lines'])
 CommentBlock = namedtuple('CommentBlock', ['comments'])
@@ -276,7 +278,24 @@ def generate_C_source(filename, elements):
     return '\n'.join(out)
 
 if __name__ == '__main__':
-    f = open('example.type')
+    parser = argparse.ArgumentParser("Compile type definition to C source and header files.")
+    parser.add_argument("input", help="Type definition file.")
+    parser.add_argument("-o", "--outfile",
+                        help="Specify a different output file name.")
+    args = parser.parse_args()
+    print('reading ', args.input)
+    f = open(args.input)
     t = parse_file(f)
-    print(generate_C_header('example', t))
-    print(generate_C_source('example', t))
+
+    basename = args.outfile
+    if basename is None:
+        basename = args.input
+    basename = splitext(basename)[0]
+
+    with open(basename+'.h', 'w') as f:
+        print('writing', f.name)
+        f.write(generate_C_header('example', t))
+
+    with open(basename+'.c', 'w') as f:
+        print('writing', f.name)
+        f.write(generate_C_source('example', t))
