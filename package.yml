@@ -24,7 +24,7 @@ target.demo:
     - examples/posix/messagebus_port.c
 
 target.arm:
-    - examples/chibios/port.c
+    - examples/chibios/messagebus_port.c
 
 templates:
     demo.jinja: CMakeLists.txt
