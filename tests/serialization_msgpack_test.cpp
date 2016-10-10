@@ -104,6 +104,26 @@ TEST(MessagePackSerializationTests, SerializeInt32Value)
     CHECK_EQUAL(var, var_read);
 }
 
+TEST(MessagePackSerializationTests, SerializeStringValue)
+{
+    messagebus_type_entry_t entry = {
+        .is_base_type = 1,
+        .is_array = 0,
+        .is_dynamic_array = 0,
+        .base_type = MESSAGEBUS_TYPE_STRING,
+        .struct_offset = 0,
+        .size = 10
+    };
+    char str[10] = "test";
+    CHECK_TRUE(messagebus_cmp_ser_value(&str, &entry, &ctx));
+    cmp_mem_access_set_pos(&mem, 0);
+    memset(str, 0, sizeof(str));
+    uint32_t len = sizeof(str);
+    CHECK_TRUE(cmp_read_str(&ctx, &str[0], &len));
+    STRCMP_EQUAL("test", str);
+    CHECK_EQUAL(4, len);
+}
+
 
 TEST(MessagePackSerializationTests, SerializeCustomTypeValue)
 {

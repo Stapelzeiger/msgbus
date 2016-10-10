@@ -34,6 +34,8 @@ bool messagebus_cmp_ser_value_once(const void *var,
             return cmp_write_float(ctx, *(float*)var);
         case MESSAGEBUS_TYPE_INT32:
             return cmp_write_int(ctx, *(int32_t*)var);
+        case MESSAGEBUS_TYPE_STRING:
+            return cmp_write_str(ctx, (const char*)var, strlen((const char*)var));
         default:
             return false;
         }
