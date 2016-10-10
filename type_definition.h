@@ -35,14 +35,4 @@ struct messagebus_type_entry_s {
     size_t size;
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
-#ifdef __cplusplus
-}
-#endif
-
 #endif /* MESSAGEBUS_TYPE_DEFINITION_H */

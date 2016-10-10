@@ -11,9 +11,9 @@ bool messagebus_print_entry(void (*print_fn)(void *, const char *, ...), void *a
                             const messagebus_type_entry_t *entry, const void *object,
                             unsigned int indent);
 
-bool _messagebus_print_type(void (*print_fn)(void *, const char *, ...), void *arg,
-                            const messagebus_type_definition_t *type, const void *object,
-                            unsigned int indent);
+bool messagebus_print_type_indent(void (*print_fn)(void *, const char *, ...), void *arg,
+                                  const messagebus_type_definition_t *type, const void *object,
+                                  unsigned int indent);
 
 bool messagebus_print_type(void (*print_fn)(void *, const char *, ...), void *arg,
                            const messagebus_type_definition_t *type, const void *object);
