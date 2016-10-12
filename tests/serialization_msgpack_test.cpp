@@ -12,16 +12,20 @@ extern "C" {
 extern "C" {
 bool messagebus_cmp_ser_type(const void *var,
                              const messagebus_type_definition_t *type,
-                             cmp_ctx_t *ctx);
-bool messagebus_cmp_ser_type_compact(const void *var,
-                                     const messagebus_type_definition_t *type,
-                                     cmp_ctx_t *ctx);
+                             cmp_ctx_t *ctx,
+                             bool compact);
 bool messagebus_cmp_ser_struct_entry(const void *var,
                                      const messagebus_type_entry_t *entry,
-                                     cmp_ctx_t *ctx);
+                                     cmp_ctx_t *ctx,
+                                     bool compact);
 bool messagebus_cmp_ser_value(const void *var,
                               const messagebus_type_entry_t *entry,
-                              cmp_ctx_t *ctx);
+                              cmp_ctx_t *ctx,
+                              bool compact);
+bool messagebus_cmp_ser_value_once(const void *var,
+                                   const messagebus_type_entry_t *entry,
+                                   cmp_ctx_t *ctx,
+                                   bool compact);
 }
 
 
@@ -55,6 +59,26 @@ messagebus_type_definition_t simple_type = {
 };
 
 
+struct nested_s {
+    struct simple_s s;
+};
+
+messagebus_type_entry_t nested_entries[] = {
+    {
+        .name = "s",
+        .is_base_type = 0,
+        .is_array = 0,
+        .is_dynamic_array = 0,
+        .struct_offset = offsetof(struct nested_s, s),
+        .type = &simple_type,
+    }
+};
+
+messagebus_type_definition_t nested_type = {
+    .nb_elements = 1,
+    .elements = nested_entries,
+};
+
 
 TEST_GROUP(MessagePackSerializationTests)
 {
@@ -79,7 +103,7 @@ TEST(MessagePackSerializationTests, SerializeFloatValue)
         .struct_offset = 0,
     };
     float var = 3.14;
-    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx, false));
     cmp_mem_access_set_pos(&mem, 0);
     float var_read;
     CHECK_TRUE(cmp_read_float(&ctx, &var_read));
@@ -97,7 +121,7 @@ TEST(MessagePackSerializationTests, SerializeInt32Value)
         .struct_offset = 0,
     };
     int32_t var = 42;
-    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx, false));
     cmp_mem_access_set_pos(&mem, 0);
     int32_t var_read;
     CHECK_TRUE(cmp_read_int(&ctx, &var_read));
@@ -115,7 +139,7 @@ TEST(MessagePackSerializationTests, SerializeStringValue)
         .size = 10
     };
     char str[10] = "test";
-    CHECK_TRUE(messagebus_cmp_ser_value(&str, &entry, &ctx));
+    CHECK_TRUE(messagebus_cmp_ser_value(&str, &entry, &ctx, false));
     cmp_mem_access_set_pos(&mem, 0);
     memset(str, 0, sizeof(str));
     uint32_t len = sizeof(str);
@@ -135,7 +159,7 @@ TEST(MessagePackSerializationTests, SerializeCustomTypeValue)
         .struct_offset = 0,
     };
     struct simple_s var = {.x = 3.14, .y = 42};
-    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx, false));
     cmp_mem_access_set_pos(&mem, 0);
     uint32_t nb_elements;
     CHECK_TRUE(cmp_read_map(&ctx, &nb_elements));
@@ -155,7 +179,7 @@ TEST(MessagePackSerializationTests, SerializeStaticArray)
         .size = sizeof(int32_t),
     };
     int32_t var[3] = {1, 2, 3};
-    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx, false));
     cmp_mem_access_set_pos(&mem, 0);
     int32_t var_read;
     CHECK_TRUE(cmp_read_int(&ctx, &var_read));
@@ -184,7 +208,7 @@ TEST(MessagePackSerializationTests, SerializeDynamicArray)
         .size = sizeof(int32_t),
     };
     struct dynamic_array_test_s var = {.list = {1, 2, 3}, .list_len = 3};
-    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    CHECK_TRUE(messagebus_cmp_ser_value(&var, &entry, &ctx, false));
     cmp_mem_access_set_pos(&mem, 0);
     int32_t var_read;
     CHECK_TRUE(cmp_read_int(&ctx, &var_read));
@@ -213,7 +237,7 @@ TEST(MessagePackSerializationTests, SerializeDynamicArrayMaxSizeCheck)
         .size = sizeof(int32_t),
     };
     struct dynamic_array_test_s var = {.list_len = 11};
-    CHECK_FALSE(messagebus_cmp_ser_value(&var, &entry, &ctx));
+    CHECK_FALSE(messagebus_cmp_ser_value(&var, &entry, &ctx, false));
 }
 
 
@@ -228,7 +252,7 @@ TEST(MessagePackSerializationTests, SerializeStructEntry)
         .struct_offset = 0,
     };
     int32_t var = 42;
-    CHECK_TRUE(messagebus_cmp_ser_struct_entry(&var, &entry, &ctx));
+    CHECK_TRUE(messagebus_cmp_ser_struct_entry(&var, &entry, &ctx, false));
     cmp_mem_access_set_pos(&mem, 0);
     char name_read_buf[10];
     uint32_t name_read_buf_sz = sizeof(name_read_buf);
@@ -245,7 +269,7 @@ TEST(MessagePackSerializationTests, SerializeStructEntry)
 TEST(MessagePackSerializationTests, SerializeStruct)
 {
     struct simple_s val = {.x = 3.14, .y = 42};
-    CHECK_TRUE(messagebus_cmp_ser_type(&val, &simple_type, &ctx));
+    CHECK_TRUE(messagebus_cmp_ser_type(&val, &simple_type, &ctx, false));
 
     cmp_mem_access_set_pos(&mem, 0);
     uint32_t nb_elements;
@@ -272,7 +296,7 @@ TEST(MessagePackSerializationTests, SerializeStruct)
 TEST(MessagePackSerializationTests, SerializeStructCompact)
 {
     struct simple_s val = {.x = 3.14, .y = 42};
-    CHECK_TRUE(messagebus_cmp_ser_type_compact(&val, &simple_type, &ctx));
+    CHECK_TRUE(messagebus_cmp_ser_type(&val, &simple_type, &ctx, true));
 
     cmp_mem_access_set_pos(&mem, 0);
     uint32_t nb_elements;
@@ -284,5 +308,24 @@ TEST(MessagePackSerializationTests, SerializeStructCompact)
     CHECK_EQUAL(val.x, var_f_read);
     CHECK_TRUE(cmp_read_int(&ctx, &var_i_read));
     CHECK_EQUAL(val.y, var_i_read);
+}
+
+TEST(MessagePackSerializationTests, SerializeNestedStructCompact)
+{
+    struct nested_s val = {.s = {.x = 3.14, .y = 42}};
+    CHECK_TRUE(messagebus_cmp_ser_type(&val, &nested_type, &ctx, true));
+
+    cmp_mem_access_set_pos(&mem, 0);
+    uint32_t nb_elements;
+    float var_f_read;
+    int32_t var_i_read;
+    CHECK_TRUE(cmp_read_array(&ctx, &nb_elements));
+    CHECK_EQUAL(1, nb_elements);
+    CHECK_TRUE(cmp_read_array(&ctx, &nb_elements));
+    CHECK_EQUAL(2, nb_elements);
+    CHECK_TRUE(cmp_read_float(&ctx, &var_f_read));
+    CHECK_EQUAL(val.s.x, var_f_read);
+    CHECK_TRUE(cmp_read_int(&ctx, &var_i_read));
+    CHECK_EQUAL(val.s.y, var_i_read);
 }
 

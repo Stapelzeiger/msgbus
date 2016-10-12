@@ -9,24 +9,26 @@
 
 bool messagebus_cmp_ser_type(const void *var,
                              const messagebus_type_definition_t *type,
-                             cmp_ctx_t *ctx);
-bool messagebus_cmp_ser_type_compact(const void *var,
-                                     const messagebus_type_definition_t *type,
-                                     cmp_ctx_t *ctx);
+                             cmp_ctx_t *ctx,
+                             bool compact);
 bool messagebus_cmp_ser_struct_entry(const void *var,
                                      const messagebus_type_entry_t *entry,
-                                     cmp_ctx_t *ctx);
+                                     cmp_ctx_t *ctx,
+                                     bool compact);
 bool messagebus_cmp_ser_value(const void *var,
                               const messagebus_type_entry_t *entry,
-                              cmp_ctx_t *ctx);
+                              cmp_ctx_t *ctx,
+                              bool compact);
 bool messagebus_cmp_ser_value_once(const void *var,
                                    const messagebus_type_entry_t *entry,
-                                   cmp_ctx_t *ctx);
+                                   cmp_ctx_t *ctx,
+                                   bool compact);
 
 
 bool messagebus_cmp_ser_value_once(const void *var,
                                    const messagebus_type_entry_t *entry,
-                                   cmp_ctx_t *ctx)
+                                   cmp_ctx_t *ctx,
+                                   bool compact)
 {
     if (entry->is_base_type) {
         switch (entry->base_type) {
@@ -40,14 +42,15 @@ bool messagebus_cmp_ser_value_once(const void *var,
             return false;
         }
     } else {
-        return messagebus_cmp_ser_type(var, entry->type, ctx);
+        return messagebus_cmp_ser_type(var, entry->type, ctx, compact);
     }
 }
 
 
 bool messagebus_cmp_ser_value(const void *var,
                               const messagebus_type_entry_t *entry,
-                              cmp_ctx_t *ctx)
+                              cmp_ctx_t *ctx,
+                              bool compact)
 {
     if (entry->is_array || entry->is_dynamic_array) {
         int len;
@@ -63,56 +66,49 @@ bool messagebus_cmp_ser_value(const void *var,
         int i;
         for (i = 0; i < len; i++) {
             const void *var_entry_i = var + entry->struct_offset + entry->size * i;
-            if (!messagebus_cmp_ser_value_once(var_entry_i, entry, ctx)) {
+            if (!messagebus_cmp_ser_value_once(var_entry_i, entry, ctx, compact)) {
                 return false;
             }
         }
         return true;
     } else {
         const void *var_entry = var + entry->struct_offset;
-        return messagebus_cmp_ser_value_once(var_entry, entry, ctx);
+        return messagebus_cmp_ser_value_once(var_entry, entry, ctx, compact);
     }
 }
 
 
 bool messagebus_cmp_ser_struct_entry(const void *var,
                                      const messagebus_type_entry_t *entry,
-                                     cmp_ctx_t *ctx)
+                                     cmp_ctx_t *ctx,
+                                     bool compact)
 {
-    if (!cmp_write_str(ctx, entry->name, strlen(entry->name))) {
-        return false;
+    if (!compact) {
+        if (!cmp_write_str(ctx, entry->name, strlen(entry->name))) {
+            return false;
+        }
     }
-    return messagebus_cmp_ser_value(var, entry, ctx);
+    return messagebus_cmp_ser_value(var, entry, ctx, compact);
 }
 
 
 bool messagebus_cmp_ser_type(const void *var,
                              const messagebus_type_definition_t *type,
-                             cmp_ctx_t *ctx)
+                             cmp_ctx_t *ctx,
+                             bool compact)
 {
-    if (!cmp_write_map(ctx, type->nb_elements)) {
-        return false;
-    }
-    int i;
-    for (i = 0; i < type->nb_elements; i++) {
-        if (!messagebus_cmp_ser_struct_entry(var, &type->elements[i], ctx)) {
+    if (compact) {
+        if (!cmp_write_array(ctx, type->nb_elements)) {
+            return false;
+        }
+    } else {
+        if (!cmp_write_map(ctx, type->nb_elements)) {
             return false;
         }
     }
-    return true;
-}
-
-
-bool messagebus_cmp_ser_type_compact(const void *var,
-                                     const messagebus_type_definition_t *type,
-                                     cmp_ctx_t *ctx)
-{
-    if (!cmp_write_array(ctx, type->nb_elements)) {
-        return false;
-    }
     int i;
     for (i = 0; i < type->nb_elements; i++) {
-        if (!messagebus_cmp_ser_value(var, &type->elements[i], ctx)) {
+        if (!messagebus_cmp_ser_struct_entry(var, &type->elements[i], ctx, compact)) {
             return false;
         }
     }
