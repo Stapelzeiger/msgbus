@@ -22,6 +22,7 @@ tests:
 target.demo:
     - examples/posix/demo.c
     - examples/posix/messagebus_port.c
+    - dependencies/cmp/cmp.c
 
 target.arm:
     - examples/chibios/messagebus_port.c
